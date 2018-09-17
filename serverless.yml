@@ -160,7 +160,7 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-        TableName: blockchain_watcher_${self:provider.stage}
+        TableName: tb_blockchain_watcher_${self:provider.stage}
     blockchainWatcherBlocks:
       Type: 'AWS::DynamoDB::Table'
       DeletionPolicy: Retain
@@ -178,7 +178,7 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-        TableName: blockchain_watcher_blocks_${self:provider.stage}
+        TableName: tb_blockchain_watcher_blocks_${self:provider.stage}
     contractDetails:
       Type: 'AWS::DynamoDB::Table'
       DeletionPolicy: Retain
@@ -196,4 +196,4 @@ resources:
         ProvisionedThroughput:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
-        TableName: contract_details_${self:provider.stage}
+        TableName: tb_contract_details_${self:provider.stage}
