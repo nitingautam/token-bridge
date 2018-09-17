@@ -1,0 +1,1 @@
+export const DEFAULT_PARTITION_LIMIT = process.env.SHARD_LIMIT ? process.env.SHARD_LIMIT : 1000000;

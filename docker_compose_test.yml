@@ -1,0 +1,27 @@
+version: '3'
+services:
+  ganache_main:
+    image: trufflesuite/ganache-cli:v6.1.6
+    command: ganache-cli --h 0.0.0.0 --p 8545 --account='0x808f2d3173474c6d28381582b1316474d35a7404b25842c3f79985b594370cc1,500000000000000000000'
+    ports:
+      - "8545:8545"
+  ganache_priv:
+    image: trufflesuite/ganache-cli:v6.1.6
+    command: ganache-cli -h 0.0.0.0 --p 8546 --account='0x808f2d3173474c6d28381582b1316474d35a7404b25842c3f79985b594370cc1,500000000000000000000'
+    ports:
+      - "8546:8546"
+  log_watcher:
+    image: watcher:dev
+    environment:
+      - MAIN_NETWORK=http://ganache_main:8545
+      - PRIV_NETWORK=http://ganache_priv:8546
+      - REGION=${REGION}
+      - ROLE=${ROLE}
+      - MAIN_NETWORK_ACCOUNT=0x2A4FEB48B3bC241C4bD3b7A9B420683deB572A58
+      - PRIV_NETWORK_ACCOUNT=0x2A4FEB48B3bC241C4bD3b7A9B420683deB572A58
+    command: bash -c "npm run test"
+    depends_on:
+      - ganache_main
+      - ganache_priv
+    volumes:
+      - ./coverage:/var/task/coverage

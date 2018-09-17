@@ -1,0 +1,21 @@
+version: '3'
+services:
+  log_watcher:
+    image: watcher:dev
+    environment:
+      - MAIN_NETWORK=${MAIN_NETWORK}
+      - PRIV_NETWORK=${PRIV_NETWORK}
+      - REGION=${REGION}
+      - ROLE=${ROLE}
+      - HART_MAIN_ADDRESS=${HART_MAIN_ADDRESS}
+      - HART_BURN_TOPIC=${HART_BURN_TOPIC}
+      - HART_PRIV_ADDRESS=${HART_PRIV_ADDRESS}
+      - MINT_SENDER=${MINT_SENDER}
+      - MINT_PK=${MINT_PK}
+      - SHARD_LIMIT=${SHARD_LIMIT}
+      - TB_WATCHER=${TB_WATCHER}
+      - TB_WATCHER_BLOCKS=${TB_WATCHER_BLOCKS}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - STAGE=${STAGE}
+    command: bash -c "sls deploy --stage $STAGE"
