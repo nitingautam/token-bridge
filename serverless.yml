@@ -20,7 +20,7 @@ provider:
   name: aws
   runtime: nodejs8.10
   role: ${env:ROLE}
-  region: local
+  region: ${env:REGION}
   stage: ${opt:stage, 'dev'}
   environment:
     MAIN_NETWORK: ${env:MAIN_NETWORK}
@@ -34,6 +34,7 @@ provider:
     SHARD_LIMIT: ${env:SHARD_LIMIT}
     TB_WATCHER: ${env:TB_WATCHER}_${self:provider.stage}
     TB_WATCHER_BLOCKS: ${env:TB_WATCHER_BLOCKS}_${self:provider.stage}
+    TB_CONTRACT_DETAILS: ${env:TB_CONTRACT_DETAILS}_${self:provider.stage}
   tags:
     Namespace: hara
     Name: hara-blockchain-log-watcher-${self:provider.stage}
