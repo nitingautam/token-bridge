@@ -18,6 +18,7 @@ export default class MainNet {
   constructor() {
     this.web3 = mainWeb3;
     this.haraToken = new HaraToken(this.web3, hartABI, hartContractBinary);
+    this.debug = process.env.DEBUG ? bool(process.env.DEBUG) : false;
   }
 
   _getContractAddress = () => {
@@ -68,22 +69,28 @@ export default class MainNet {
     let latestBlockMain = await new BlockchainWatcherBlock()._getLatestBlock(
       "1"
     );
+    if (this.debug) console.log(latestBlockMain);
 
     const privNet = await new PrivateNet();
     const modelBlockChainWatcher = new BlockchainWatcher();
     const modelBlockchainWatcherBlock = new BlockchainWatcherBlock();
 
     let mintAccount = await privNet._getMintAccount();
+    if (this.debug) console.log(mintAccount);
 
     if (startBlock) {
       latestBlockMain = startBlock;
     }
+    if (this.debug) console.log(startBlock);
 
     let _blockLogs = await this._watch(latestBlockMain);
     let mintedData = [];
     let burnIDList = [];
+    if (this.debug) console.log(mintedData);
+    if (this.debug) console.log(burnIDList);
 
     let latestBlockNumber = latestBlockMain;
+    if (this.debug) console.log(latestBlockNumber);
 
     for (const singleLog of _blockLogs) {
       let partitionKey = await modelBlockChainWatcher._checkPartitionKey(
@@ -95,6 +102,7 @@ export default class MainNet {
         singleLog.data,
         singleLog.topics
       );
+      if (this.debug) console.log(_data);
 
       if (typeof _data.burner !== "undefined" && "burner" in _data) {
         const result = await modelBlockChainWatcher._generateBurnItem(
@@ -106,7 +114,7 @@ export default class MainNet {
 
         const joinedBurnID = result.id;
         const checkDB = await modelBlockChainWatcher._getData(joinedBurnID);
-
+        if (this.debug) console.log(checkDB);
         burnIDList.push(joinedBurnID);
 
         if (checkDB === false) {
@@ -114,7 +122,7 @@ export default class MainNet {
 
           if (runMint) {
             let nonce = await privNet._getNonce(mintAccount);
-
+            if (this.debug) console.log(nonce);
             console.log("running minting on joinedBurnID=" + joinedBurnID);
 
             try {
