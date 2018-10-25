@@ -1,18 +1,8 @@
 service: blockchain-watcher
 
-custom:
-  serverless-offline:
-    babelOptions:
-      presets: ["es2015"]
-  webpackIncludeModules:
-    webpackConfig: 'webpack.config.js'
-    packager: 'npm'
-
 plugins:
   - serverless-offline
   - serverless-offline-scheduler
-  - serverless-dynamodb-local
-  - serverless-webpack
 
 frameworkVersion: "<=1.28.0"
 
@@ -23,18 +13,22 @@ provider:
   region: ${env:REGION}
   stage: ${opt:stage, 'dev'}
   environment:
-    MAIN_NETWORK: ${env:MAIN_NETWORK}
-    PRIV_NETWORK: ${env:PRIV_NETWORK}
+    WATCHER_NETWORK_URL: ${env:WATCHER_NETWORK_URL}
+    WATCHER_NETWORK_ID: ${env:WATCHER_NETWORK_ID}
+    WATCHER_NETWORK_ACCOUNT: ${env:WATCHER_NETWORK_ACCOUNT}
+    WATCHER_CONTRACT_ADDRESS: ${env:WATCHER_CONTRACT_ADDRESS}
+    WATCHER_MINT_PK: ${env:WATCHER_MINT_PK}
+    WATCHER_MINT_PK_PATH: ${env:WATCHER_MINT_PK_PATH}
+    DEFAULT_MINT_NETWORK_URL: ${env:DEFAULT_MINT_NETWORK_URL}
+    DEFAULT_MINT_NETWORK_ID: ${env:DEFAULT_MINT_NETWORK_ID}
+    DEFAULT_MINT_CONTRACT_ADDRESS: ${env:DEFAULT_MINT_CONTRACT_ADDRESS}
+    MULTIPLE_MINT_NETWORK_ID: ${env:MULTIPLE_MINT_NETWORK_ID}
+    MULTIPLE_MINT_NETWORK_URL: ${env:MULTIPLE_MINT_NETWORK_URL}
+    MULTIPLE_MINT_CONTRACT_ADDRESS: ${env:MULTIPLE_MINT_CONTRACT_ADDRESS}
     REGION: ${env:REGION}
-    HART_MAIN_ADDRESS: ${env:HART_MAIN_ADDRESS}
-    HART_BURN_TOPIC: ${env:HART_BURN_TOPIC}
-    HART_PRIV_ADDRESS: ${env:HART_PRIV_ADDRESS}
-    MINT_SENDER: ${env:MINT_SENDER}
-    MINT_PK: ${env:MINT_PK}
     SHARD_LIMIT: ${env:SHARD_LIMIT}
-    TB_WATCHER: ${env:TB_WATCHER}_${self:provider.stage}
-    TB_WATCHER_BLOCKS: ${env:TB_WATCHER_BLOCKS}_${self:provider.stage}
-    TB_CONTRACT_DETAILS: ${env:TB_CONTRACT_DETAILS}_${self:provider.stage}
+    TB_WATCHER: ${env:TB_WATCHER}
+    TB_WATCHER_BLOCKS: ${env:TB_WATCHER_BLOCKS}
     DEBUG: ${env:DEBUG}
   tags:
     Namespace: hara
@@ -58,143 +52,89 @@ functions:
     timeout: 10
     events:
     - http:
-        path: get_transaction_by_address
+        path: bridge/get_transaction_by_address
         method: get
+        cors: true
 
   get_id_transactions:
     handler: handler._getIDTransaction
     timeout: 10
     events:
     - http:
-        path: get_transaction_by_id
+        path: bridge/get_transaction_by_id
         method: get
+        cors: true
 
   get_timestamp_transactions:
     handler: handler._getTimestampTransaction
     timeout: 10
     events:
     - http:
-        path: get_transaction_by_timestamp
+        path: bridge/get_transaction_by_timestamp
         method: get
+        cors: true
   
   get_data_transactions:
     handler: handler._getDataTransaction
     timeout: 10
     events:
     - http:
-        path: get_transaction_by_data
+        path: bridge/get_transaction_by_data
         method: get
+        cors: true
 
   external_request:
     handler: handler._externalRequest
     timeout: 10
     events:
     - http:
-        path: external_request
+        path: bridge/external_request
         method: post
+        cors: true
   
   upload_data:
     handler: handler._uploadData
     timeout: 10
     events:
     - http:
-        path: upload_data
+        path: bridge/upload_data
         method: post
+        cors: true
 
-  main_watcher:
-    handler: handler._mainWatcher
+  burn_watcher:
+    handler: handler._burnWatcher
     timeout: 55
     events:
     - schedule: rate(1 minute)
+    - http:
+        path: bridge/manual_trigger_burn
+        method: get
+        cors: true
 
-  priv_watcher:
-    handler: handler._privWatcher
+  mint_watcher:
+    handler: handler._mintWatcher
     timeout: 55
     events:
     - schedule: rate(1 minute)
+    - http:
+        path: bridge/manual_trigger_mint
+        method: get
+        cors: true
 
   manual_mint:
     handler: handler._postManualMint
     timeout: 20
     events:
     - http:
-        path: manual_mint
+        path: bridge/manual_mint
         method: post
-    
-resources:
-  Resources:
-    blockchainWatcher:
-      Type: 'AWS::DynamoDB::Table'
-      DeletionPolicy: Retain
-      Properties:
-        AttributeDefinitions:
-          - AttributeName: part_key
-            AttributeType: S
-          - AttributeName: id
-            AttributeType: S 
-          - AttributeName: burn_timestamp 
-            AttributeType: S 
-          - AttributeName: address
-            AttributeType: S 
-        KeySchema:
-          - AttributeName: part_key
-            KeyType: HASH
-          - AttributeName: id
-            KeyType: RANGE
-        LocalSecondaryIndexes:
-          - IndexName: address_idx
-            KeySchema:
-              - AttributeName: part_key
-                KeyType: HASH
-              - AttributeName: address
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
-          - IndexName: partkey_burn_idx
-            KeySchema:
-              - AttributeName: part_key
-                KeyType: HASH
-              - AttributeName: burn_timestamp
-                KeyType: RANGE
-            Projection:
-              ProjectionType: ALL
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
-        TableName: tb_blockchain_watcher_${self:provider.stage}
-    blockchainWatcherBlocks:
-      Type: 'AWS::DynamoDB::Table'
-      DeletionPolicy: Retain
-      Properties:
-        AttributeDefinitions:
-          - AttributeName: networkid
-            AttributeType: S
-          - AttributeName: event
-            AttributeType: S
-        KeySchema:
-          - AttributeName: networkid
-            KeyType: HASH
-          - AttributeName: event
-            KeyType: RANGE
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
-        TableName: tb_blockchain_watcher_blocks_${self:provider.stage}
-    contractDetails:
-      Type: 'AWS::DynamoDB::Table'
-      DeletionPolicy: Retain
-      Properties:
-        AttributeDefinitions:
-          - AttributeName: key
-            AttributeType: N
-          - AttributeName: contract_network_name
-            AttributeType: S
-        KeySchema:
-          - AttributeName: key
-            KeyType: HASH
-          - AttributeName: contract_network_name
-            KeyType: RANGE
-        ProvisionedThroughput:
-          ReadCapacityUnits: 1
-          WriteCapacityUnits: 1
-        TableName: tb_contract_details_${self:provider.stage}
+        cors: true
+
+  get_total_supply:
+    handler: handler._getTotalSupply
+    timeout: 20
+    events:
+    - http:
+        path: bridge/get_total_supply
+        method: get
+        cors: true

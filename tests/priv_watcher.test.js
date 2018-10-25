@@ -1,26 +1,22 @@
 import assert from "assert";
 import MainNet from "../src/network/MainNet";
 import PrivateNet from "../src/network/PrivateNet";
-import BlockchainWatcherBlock from "../src/model/BlockchainWatcherBlock";
 import {
+  watcherNetworkAccount,
+  watcherNetworkID,
   privateKey,
-  mainProvider,
-  mintSender,
-  mainNetAccount,
-  privNetAccount
 } from "../src/constants/Web3Config";
 import BlockchainWatcher from "../src/model/BlockchainWatcher";
-import { DEFAULT_PARTITION_LIMIT } from "../src/constants/LogWatcherConfig";
 import {
   burnLogABI,
   hartABI,
-  privHartABI,
   mintLogABI
 } from "../src/constants/AbiFiles";
 import {
   hartContractBinary,
-  privHartContractBinary
+  contractUnitTest
 } from "../src/constants/Binary";
+import { privateToAddress, bufferToHex } from "ethereumjs-util";
 
 describe("burn 10 token and mint 10 token and save to database", async function() {
   this.timeout(50000);
@@ -29,14 +25,14 @@ describe("burn 10 token and mint 10 token and save to database", async function(
   let mainAccount;
   let privAccount;
 
-  let mainNetContractAddress;
+  let watcherContractAddress;
   let privNetContractAddress;
 
   let txLog;
   let singleLog;
   let mintAccount;
   let decodedData;
-
+  let _privateKey;
   let joinedBurnID;
 
   before(async () => {
@@ -44,11 +40,16 @@ describe("burn 10 token and mint 10 token and save to database", async function(
     privNet = await new PrivateNet();
     mainAccount = await mainNet._getAccounts();
     privAccount = await privNet._getAccounts();
+
+    _privateKey = await privateKey();
   });
 
-  it("check account", () => {
-    assert.strictEqual(mainAccount[0], mainNetAccount);
-    assert.strictEqual(privAccount[0], privNetAccount);
+  it("check account", async () => {
+    let watcherMintAddress = privateToAddress(await privateKey());
+    let mintAccount = bufferToHex(watcherMintAddress);
+
+    assert.strictEqual(mainAccount[0], watcherNetworkAccount);
+    assert.strictEqual(privAccount[0], mintAccount);
   });
 
   it("deploy contract to Mainnet", async () => {
@@ -66,18 +67,18 @@ describe("burn 10 token and mint 10 token and save to database", async function(
         function(error, transactionHash) {}
       )
       .then(function(newContractInstance) {
-        mainNetContractAddress = newContractInstance.options.address;
+        watcherContractAddress = newContractInstance.options.address;
       });
 
-    assert.strictEqual(typeof mainNetContractAddress, "string");
+    assert.strictEqual(typeof watcherContractAddress, "string");
   });
 
   it("deploy contract to PrivNet", async () => {
     //deploy hara token priv
-    var haratokenContract = await new privNet.web3.eth.Contract(privHartABI);
+    var haratokenContract = await new privNet.web3.eth.Contract(hartABI);
     await haratokenContract
       .deploy({
-        data: privHartContractBinary
+        data: contractUnitTest
       })
       .send(
         {
@@ -94,10 +95,10 @@ describe("burn 10 token and mint 10 token and save to database", async function(
   });
 
   it("test @_initHart and @_burn", async () => {
-    await mainNet.haraToken._initHart(hartABI, mainNetContractAddress);
+    await mainNet.haraToken._initHart(hartABI, watcherContractAddress);
     txLog = await mainNet.haraToken._burn(10, "", mainAccount[0]);
 
-    assert.strictEqual(txLog.events.Burn.address, mainNetContractAddress);
+    assert.strictEqual(txLog.events.Burn.address, watcherContractAddress);
 
     assert.strictEqual(txLog.events.Burn.event, "Burn");
     assert.strictEqual(txLog.events.Transfer.event, "Transfer");
@@ -108,7 +109,7 @@ describe("burn 10 token and mint 10 token and save to database", async function(
     let startBlock = 0;
     let logs = await mainNet.haraToken._watch(
       startBlock,
-      mainNetContractAddress,
+      watcherContractAddress,
       [mainNet.haraToken._getTopicMain()],
       false
     );
@@ -123,14 +124,14 @@ describe("burn 10 token and mint 10 token and save to database", async function(
     let startBlock = 0;
     let logs = await mainNet.haraToken._watch(
       startBlock,
-      mainNetContractAddress,
+      watcherContractAddress,
       [mainNet.haraToken._getTopicMain()],
       false
     );
 
     singleLog = logs[logs.length - 1];
 
-    decodedData = await privNet._decodeData(burnLogABI, singleLog.data, singleLog.topics);
+    decodedData = await mainNet._decodeData(burnLogABI, singleLog.data, singleLog.topics, watcherContractAddress);
 
     joinedBurnID = await new BlockchainWatcher()._getJoinedBurnID(decodedData.id, "1");
 
@@ -140,15 +141,15 @@ describe("burn 10 token and mint 10 token and save to database", async function(
   });
 
   it("test @_mint", async () => {
-    mintAccount = privNet._getMintAccount();
+    mintAccount = await privNet._getMintAccount();
     let nonce = await privNet._getNonce(mintAccount);
 
-    await privNet.haraToken._initHart(privHartABI, privNetContractAddress);
+    await privNet.haraToken._initHart(hartABI, privNetContractAddress);
     let mintStatus = await privNet.haraToken._mint(
       decodedData,
       mintAccount,
-      privateKey,
-      "1",
+      _privateKey,
+      watcherNetworkID,
       nonce
     );
 
@@ -157,7 +158,7 @@ describe("burn 10 token and mint 10 token and save to database", async function(
   });
 
   it("test @_watch privatenet", async () => {
-    await privNet.haraToken._initHart(privHartABI, privNetContractAddress);
+    await privNet.haraToken._initHart(hartABI, privNetContractAddress);
     let _blockLogs = await privNet.haraToken._watch(0, privNetContractAddress, [
       privNet.haraToken._getTopicPriv()
     ]);
@@ -167,9 +168,9 @@ describe("burn 10 token and mint 10 token and save to database", async function(
     let topics = _singleLog.topics;
     let hashData = _singleLog.data;
 
-    let _decodedData = await privNet._decodeData(mintLogABI, hashData, topics);
+    let _decodedData = await mainNet._decodeData(mintLogABI, hashData, topics, privNetContractAddress);
 
-    assert.strictEqual(_decodedData.requester, mintSender);
+    assert.strictEqual(_decodedData.requester.toLowerCase(), privAccount[0]);
     assert.strictEqual(_decodedData.id, '0');
     assert.strictEqual(_decodedData.value, '10');
   });

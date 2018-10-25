@@ -5,6 +5,7 @@ import {
   DynamoDbTable,
 } from "@aws/dynamodb-data-mapper";
 import MainNet from "../network/MainNet";
+import { defaultMintNetworkID, watcherNetworkID } from "../constants/Web3Config";
 
 // if you are using mapper please use this class
 class _dbWatcher {}
@@ -35,7 +36,9 @@ Object.defineProperties(_dbWatcher.prototype, {
       mint_status: { type: "String" },
       mint_timestamp: { type : "String" },
       part_key_length: { type: "Number" },
-      to: { type: "String" }
+      to: { type: "String" },
+      mint_txhash: { type: "String" },
+      hart_value: { type: "Number" }
     }
   }
 });
@@ -43,6 +46,8 @@ Object.defineProperties(_dbWatcher.prototype, {
 export default class BlockchainWatcher {
   constructor() {
     this.tblName = TB_WATCHER;
+
+    console.log("BlockchainWatcher", TB_WATCHER);
 
     this.ddb = InitDB();
     this.dynamoDBGetAsync = promisify(this.ddb.get).bind(this.ddb);
@@ -52,7 +57,7 @@ export default class BlockchainWatcher {
     this.dynamoDBPutAsync = promisify(this.ddb.put).bind(this.ddb);
   }
 
-  _insertData = async data => {
+  async _insertData(data) {
     return new Promise((resolve, reject) => {
       const db = new _dbWatcher();
       let _item = Object.assign(db, data);
@@ -67,7 +72,7 @@ export default class BlockchainWatcher {
     });
   };
 
-  _getData = async (joinedBurnID) => {
+  async _getData(joinedBurnID) {
     let partitionKey = await this._getPartitionKey();
     
     for (var i = 0; i < Number(partitionKey); i++) {
@@ -92,12 +97,45 @@ export default class BlockchainWatcher {
     return false;
   };
 
-  _padNumber = (num, padlen) => {
+  async _getMintDetail(mintTxHash) {
+    let partitionKey = await this._getPartitionKey();
+    
+    for (var i = 0; i < Number(partitionKey); i++) {
+      try {
+        var params = {
+          TableName: this.tblName,
+          IndexName: "partkey_minttxhash",
+          ExpressionAttributeNames: {
+            "#part_key": "part_key",
+            "#mint_txhash": "mint_txhash"
+          },
+          ExpressionAttributeValues: {
+            ":part_key": i.toString(),
+            ":mint_txhash": mintTxHash.toString(),
+          },
+          KeyConditionExpression: "#part_key = :part_key and #mint_txhash = :mint_txhash",
+          ScanIndexForward: false,
+          Limit: 1
+        };
+        
+        return await this.dynamoDBQueryAsync(params);
+      } catch (error) {
+        console.log(error.message);
+        console.log("BlockchainWatcher@_getMintDetail data not found partKey=" + Number(i) + " mint_txhash=" + mintTxHash);
+        return false;
+      }
+    }
+
+    return false;
+  };
+
+
+  _padNumber(num, padlen) {
     var pad = new Array(1 + padlen).join(0);
     return (pad + num).slice(-pad.length);
   };
 
-  _getPadNumberByID = (ID, from = "1") => {
+  _getPadNumberByID(ID, from = "1") {
     let id = this._padNumber(ID, 12);
     let _from = this._padNumber(from.toString(), 4);
 
@@ -105,49 +143,58 @@ export default class BlockchainWatcher {
     return _from;
   };
 
-  _getJoinedBurnID = (burnID, network = "1") => {
+  _getJoinedBurnID(burnID, network = "1") {
     const padNetworkID = this._padNumber(network, 4);
     const padID = this._padNumber(burnID.toString(), 12);
     return padNetworkID.concat(padID);
   }
 
-  _updateMintStatus = async (status, joinedBurnID) => {
-    let queryData = await this._getData(joinedBurnID);
-    let saveStatus = {status:0, message: "Failed to update joinedBurnID=" + joinedBurnID};
+  async _updateMintStatus(status, joinedBurnID, mintTxHash = false) {
+    try {
+      let queryData = await this._getData(joinedBurnID);
+      let saveStatus = {status:0, message: "Failed to update joinedBurnID=" + joinedBurnID};
 
-    if(queryData) {
-      let db = new _dbWatcher();
-      let _item = Object.assign(db, queryData);
+      if(queryData) {
+        let db = new _dbWatcher();
+        let _item = Object.assign(db, queryData);
+        
+        if(mintTxHash) {
+          _item.mint_txhash = mintTxHash
+        }
 
-      _item.mint_status = status;
-
-      if(status === "true") {
-        _item.mint_timestamp = new Date().toISOString();
-      }
-
-      saveStatus = await new Promise((resolve, reject) => {
-        Mapper.put({ item: _item }).then(() => {
-          resolve({
-            status: 1,
-            data: _item,
-            message: "Minted succesfull updated burnID=" + _item.id + " status=" + status,
+        _item.mint_status = status;
+  
+        if(status === "true") {
+          _item.mint_timestamp = new Date().toISOString();
+        }
+  
+        saveStatus = await new Promise((resolve, reject) => {
+          Mapper.put({ item: _item }).then(() => {
+            resolve({
+              status: 1,
+              data: _item,
+              message: "Minted succesfull updated burnID=" + _item.id + " status=" + status,
+            });
+          }).catch(err => {
+            resolve({
+              status: 0,
+              data: _item,
+              message: "Minted update failed on burnID=" + _item.id,
+            })
           });
-        }).catch(err => {
-          resolve({
-            status: 0,
-            data: _item,
-            message: "Minted update failed on burnID=" + _item.id,
-          })
         });
-      });
-
+  
+        return saveStatus;
+      }
+  
       return saveStatus;
+      
+    } catch (error) {
+      console.error("BlockchainWatcher@_updateMintStatus", error.message);
     }
-
-    return saveStatus;
   };
 
-  _initPartitionInfo = async () => {
+  async _initPartitionInfo() {
     return new Promise((resolve, reject) => {
       const db = new _dbWatcher();
       db.part_key = "info";
@@ -166,7 +213,7 @@ export default class BlockchainWatcher {
     });
   };
 
-  _initPartKeyLength = async () => {
+  async _initPartKeyLength() {
     return new Promise((resolve, reject) => {
       const db = new _dbWatcher();
       db.part_key = "0";
@@ -185,7 +232,7 @@ export default class BlockchainWatcher {
     });
   };
 
-  _getPartitionKey = async () => {
+  async _getPartitionKey() {
     return new Promise((resolve, reject) => {
       const db = new _dbWatcher();
       db.part_key = "info";
@@ -203,7 +250,7 @@ export default class BlockchainWatcher {
     });
   };
 
-  _checkPartitionKey = async (limit = 1000000) => {
+  async _checkPartitionKey(limit = 1000000) {
     return new Promise(async (resolve, reject) => {
       var current_pk = await this._getPartitionKey();
 
@@ -260,7 +307,7 @@ export default class BlockchainWatcher {
     });
   };
 
-  _updatePartitionKeyLength = async (pk, length) => {
+  async _updatePartitionKeyLength(pk, length) {
     const db = new _dbWatcher();
     db.part_key = pk.toString();
     db.id = "length";
@@ -271,7 +318,7 @@ export default class BlockchainWatcher {
     await Mapper.put({ item: fetched });
   };
 
-  _updatePartitionKeyInfo = async pk => {
+  async _updatePartitionKeyInfo(pk) {
     const db = new _dbWatcher();
     db.part_key = "info";
     db.id = "latest_part_key";
@@ -282,12 +329,14 @@ export default class BlockchainWatcher {
     await Mapper.put({ item: fetched });
   };
   
-  _generateBurnItem = async (log, data, partKey, from) => {
+  async _generateBurnItem(log, data, partKey, from) {
     const id = this._padNumber(data.id, 12);
-    
+
     from = data.data
-      ? this._padNumber(data.data.slice(0, 1), 4)
+      ? this._padNumber(watcherNetworkID, 4)
       : this._padNumber(from, 4);
+
+    let to = data.data ? this._padNumber(data.data.slice(0, 1), 4) : this._padNumber(defaultMintNetworkID, 4);
 
     const mainNet = new MainNet();
     const item = {
@@ -300,16 +349,17 @@ export default class BlockchainWatcher {
       burn_block_number: log.blockNumber,
       mint_status: "false",
       from: from,
-      to: data.data ? this._padNumber(data.data.slice(1, 2), 4) : this._padNumber("2", 4),
+      to: to,
       burn_data: data.data ? data.data.slice(2) : "null",
       hashDetails: data.hashDetails,
-      added_timestamp: new Date().toISOString()
+      added_timestamp: new Date().toISOString(),
+      hart_value: parseInt(data.value),
     };
 
     return item;
   }
 
-  _getAddressTransaction = async (_address) => {
+  async _getAddressTransaction(_address) {
     var pk = await this._getPartitionKey();
     var promises = [];
     for (var i = 0; i < Number(pk); i++) {
@@ -331,13 +381,13 @@ export default class BlockchainWatcher {
     return result;
   }
 
-  _getIdTransaction = async (networkID, burnID) => {
+  async _getIdTransaction(networkID, burnID) {
     let joinedBurnID = this._getJoinedBurnID(burnID, networkID);
 
     return await this._getData(joinedBurnID);
   }
 
-  _getTimestampTransaction = async (_start, _end) => {
+  async _getTimestampTransaction(lastSortDate, limit) {
     var pk = await this._getPartitionKey();
     var promises = [];
     for (var i = 0; i < Number(pk); i++) {
@@ -346,11 +396,12 @@ export default class BlockchainWatcher {
         IndexName: "partkey_burn_idx",
         ExpressionAttributeValues: {
           ":part_key": i.toString(),
-          ":start": _start,
-          ":end": _end
+          ":burn_timestamp": lastSortDate
         },
+        Limit: limit,
+        ScanIndexForward: false,
         KeyConditionExpression:
-          "part_key = :part_key and burn_timestamp BETWEEN :start AND :end"
+          "part_key = :part_key and burn_timestamp < :burn_timestamp"
       };
       promises.push(this.dynamoDBQueryAsync(params));
     }
@@ -358,7 +409,7 @@ export default class BlockchainWatcher {
     return result;
   }
 
-  _getDataTransaction = async (_data) => {
+  async _getDataTransaction(_data) {
     const params = {
       TableName: this.tblName,
       ExpressionAttributeValues: {

@@ -15,72 +15,16 @@ export const mintLogABI = [
 
 export const hartABI = [
   {
-    constant: true,
-    inputs: [],
-    name: "totalSupply",
-    outputs: [
-      {
-        name: "",
-        type: "uint256"
-      }
-    ],
-    payable: false,
-    stateMutability: "view",
-    type: "function"
-  },
-  {
-    constant: true,
-    inputs: [
-      {
-        name: "_owner",
-        type: "address"
-      }
-    ],
-    name: "balanceOf",
-    outputs: [
-      {
-        name: "",
-        type: "uint256"
-      }
-    ],
-    payable: false,
-    stateMutability: "view",
-    type: "function"
-  },
-  {
-    constant: false,
-    inputs: [
-      {
-        name: "_to",
-        type: "address"
-      },
-      {
-        name: "_value",
-        type: "uint256"
-      }
-    ],
-    name: "transfer",
-    outputs: [
-      {
-        name: "",
-        type: "bool"
-      }
-    ],
-    payable: false,
-    stateMutability: "nonpayable",
-    type: "function"
-  },
-  {
     anonymous: false,
     inputs: [
       {
         indexed: true,
-        name: "from",
+        name: "owner",
         type: "address"
       },
       {
         indexed: true,
-        name: "to",
+        name: "spender",
         type: "address"
       },
       {
@@ -89,12 +33,9 @@ export const hartABI = [
         type: "uint256"
       }
     ],
-    name: "Transfer",
+    name: "Approval",
     type: "event"
-  }
-];
-
-export const privHartABI = [
+  },
   {
     constant: false,
     inputs: [
@@ -138,6 +79,10 @@ export const privHartABI = [
       {
         name: "value",
         type: "uint256"
+      },
+      {
+        name: "data",
+        type: "string"
       }
     ],
     name: "burnToken",
@@ -152,10 +97,6 @@ export const privHartABI = [
       {
         name: "value",
         type: "uint256"
-      },
-      {
-        name: "data",
-        type: "string"
       }
     ],
     name: "burnToken",
@@ -292,6 +233,156 @@ export const privHartABI = [
     type: "function"
   },
   {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        name: "burner",
+        type: "address"
+      },
+      {
+        indexed: false,
+        name: "value",
+        type: "uint256"
+      }
+    ],
+    name: "Burn",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        name: "id",
+        type: "uint256"
+      },
+      {
+        indexed: true,
+        name: "requester",
+        type: "address"
+      },
+      {
+        indexed: false,
+        name: "value",
+        type: "uint256"
+      },
+      {
+        indexed: false,
+        name: "status",
+        type: "bool"
+      }
+    ],
+    name: "MintLog",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        name: "to",
+        type: "address"
+      },
+      {
+        indexed: false,
+        name: "amount",
+        type: "uint256"
+      }
+    ],
+    name: "Mint",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [],
+    name: "MintFinished",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        name: "previousOwner",
+        type: "address"
+      }
+    ],
+    name: "OwnershipRenounced",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        name: "previousOwner",
+        type: "address"
+      },
+      {
+        indexed: true,
+        name: "newOwner",
+        type: "address"
+      }
+    ],
+    name: "OwnershipTransferred",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        name: "id",
+        type: "uint256"
+      },
+      {
+        indexed: true,
+        name: "burner",
+        type: "address"
+      },
+      {
+        indexed: false,
+        name: "value",
+        type: "uint256"
+      },
+      {
+        indexed: false,
+        name: "hashDetails",
+        type: "bytes32"
+      },
+      {
+        indexed: false,
+        name: "data",
+        type: "string"
+      }
+    ],
+    name: "BurnLog",
+    type: "event"
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        name: "from",
+        type: "address"
+      },
+      {
+        indexed: true,
+        name: "to",
+        type: "address"
+      },
+      {
+        indexed: false,
+        name: "value",
+        type: "uint256"
+      }
+    ],
+    name: "Transfer",
+    type: "event"
+  },
+  {
     constant: false,
     inputs: [
       {
@@ -332,178 +423,6 @@ export const privHartABI = [
     payable: false,
     stateMutability: "nonpayable",
     type: "function"
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        name: "from",
-        type: "address"
-      },
-      {
-        indexed: true,
-        name: "to",
-        type: "address"
-      },
-      {
-        indexed: false,
-        name: "value",
-        type: "uint256"
-      }
-    ],
-    name: "Transfer",
-    type: "event"
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        name: "id",
-        type: "uint256"
-      },
-      {
-        indexed: true,
-        name: "burner",
-        type: "address"
-      },
-      {
-        indexed: false,
-        name: "value",
-        type: "uint256"
-      },
-      {
-        indexed: false,
-        name: "hashDetails",
-        type: "bytes32"
-      },
-      {
-        indexed: false,
-        name: "data",
-        type: "string"
-      }
-    ],
-    name: "BurnLog",
-    type: "event"
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        name: "previousOwner",
-        type: "address"
-      },
-      {
-        indexed: true,
-        name: "newOwner",
-        type: "address"
-      }
-    ],
-    name: "OwnershipTransferred",
-    type: "event"
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        name: "previousOwner",
-        type: "address"
-      }
-    ],
-    name: "OwnershipRenounced",
-    type: "event"
-  },
-  {
-    anonymous: false,
-    inputs: [],
-    name: "MintFinished",
-    type: "event"
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        name: "to",
-        type: "address"
-      },
-      {
-        indexed: false,
-        name: "amount",
-        type: "uint256"
-      }
-    ],
-    name: "Mint",
-    type: "event"
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        name: "id",
-        type: "uint256"
-      },
-      {
-        indexed: true,
-        name: "requester",
-        type: "address"
-      },
-      {
-        indexed: false,
-        name: "value",
-        type: "uint256"
-      },
-      {
-        indexed: false,
-        name: "status",
-        type: "bool"
-      }
-    ],
-    name: "MintLog",
-    type: "event"
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        name: "owner",
-        type: "address"
-      },
-      {
-        indexed: true,
-        name: "spender",
-        type: "address"
-      },
-      {
-        indexed: false,
-        name: "value",
-        type: "uint256"
-      }
-    ],
-    name: "Approval",
-    type: "event"
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        name: "burner",
-        type: "address"
-      },
-      {
-        indexed: false,
-        name: "value",
-        type: "uint256"
-      }
-    ],
-    name: "Burn",
-    type: "event"
   },
   {
     constant: false,

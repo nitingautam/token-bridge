@@ -5,6 +5,8 @@ export default class BlockchainWatcherBlock {
   constructor() {
     this.tblName = TB_WATCHER_BLOCKS;
 
+    console.log("BlockchainWatcherBlock", TB_WATCHER_BLOCKS);
+
     this.ddb = InitDB();
     this.dynamoDBGetAsync = promisify(this.ddb.get).bind(this.ddb);
     this.dynamoDBUpdateAsync = promisify(this.ddb.update).bind(this.ddb);
@@ -13,67 +15,40 @@ export default class BlockchainWatcherBlock {
     this.dynamoDBPutAsync = promisify(this.ddb.put).bind(this.ddb);
   }
 
-  _getLatestBlock = async (networkID = "1") => {
+  async _getLatestBlock(networkID, event) {
     let params = {
       TableName: this.tblName,
       Key: {
-        networkid: "1",
-        event: "burn"
+        networkid: networkID,
+        event: event
       }
     };
 
-    if(networkID != "1") {
-      params = {
-        TableName: this.tblName,
-        Key: {
-          networkid: "2",
-          event: "mint"
-        }
-      };
-    }
-
     let result = await this.dynamoDBGetAsync(params);
 
-    if (typeof result.Item === "undefined" && networkID == "1") {
-      await this._initLatestBlock("1");
+    if (typeof result.Item === "undefined") {
+      await this._initLatestBlock(networkID, event);
       return 1;
-    } else if(typeof result.Item === "undefined" && networkID == "2") {
-      await this._initLatestBlock("2");
-      return 2;
     } else {
       return result.Item.latestBlock
     }
   };
 
-  _initLatestBlock = async (networkID = "1") => {
+  async _initLatestBlock(networkID, event) {
     let params = {
       TableName: this.tblName,
       Item: {
-        networkid: "1",
-        event: "burn",
+        networkid: networkID,
+        event: event,
         latestBlock: 1
       }
     };
 
-    if(networkID != "1") {
-      params = {
-        TableName: this.tblName,
-        Item: {
-          networkid: "2",
-          event: "mint",
-          latestBlock: 1
-        }
-      };
-    }
-
     let result = await this.dynamoDBPutAsync(params);
   };
   
-  _updateLatestBlock = async (networkID = "1", latestBlock= "1") => {
-    let eventType = "burn";
-    if(networkID == "2") {
-      eventType = "mint";
-    }
+  async _updateLatestBlock(networkID, latestBlock= "1", event) {
+    let eventType = event;
 
     var params = {
       TableName: this.tblName,

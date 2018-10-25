@@ -1,4 +1,6 @@
 version: '3'
+volumes:
+  node_modules:
 services:
   ganache_main:
     image: trufflesuite/ganache-cli:v6.1.6
@@ -11,17 +13,26 @@ services:
     ports:
       - "8546:8546"
   log_watcher:
-    image: watcher:dev
+    image: hara:token-bridge
     environment:
-      - MAIN_NETWORK=http://ganache_main:8545
-      - PRIV_NETWORK=http://ganache_priv:8546
+      - WATCHER_NETWORK_URL=http://ganache_main:8545
+      - WATCHER_NETWORK_ID=4
+      - WATCHER_NETWORK_ACCOUNT=0x2A4FEB48B3bC241C4bD3b7A9B420683deB572A58
+      - WATCHER_MINT_PK=0x808f2d3173474c6d28381582b1316474d35a7404b25842c3f79985b594370cc1
+      - WATCHER_MINT_PK_PATH=/blockchain/token-bridge/mint_pk_path
+      - WATCHER_CONTRACT_ADDRESS=false
+      - DEFAULT_MINT_NETWORK_URL=http://ganache_priv:8546
+      - DEFAULT_MINT_NETWORK_ID=5
+      - DEFAULT_MINT_CONTRACT_ADDRESS=false
+      - MULTIPLE_MINT_NETWORK_ID=[]
+      - MULTIPLE_MINT_NETWORK_URL=[]
+      - MULTIPLE_MINT_CONTRACT_ADDRESS=[]
       - REGION=${REGION}
       - ROLE=${ROLE}
-      - MAIN_NETWORK_ACCOUNT=0x2A4FEB48B3bC241C4bD3b7A9B420683deB572A58
-      - PRIV_NETWORK_ACCOUNT=0x2A4FEB48B3bC241C4bD3b7A9B420683deB572A58
+      - IS_DEV=true
     command: bash -c "npm run test"
     depends_on:
       - ganache_main
       - ganache_priv
     volumes:
-      - ./coverage:/var/task/coverage
+      - ./coverage:/app/coverage

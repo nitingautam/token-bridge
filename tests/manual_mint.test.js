@@ -1,13 +1,14 @@
 import assert from "assert";
 import MainNet from "../src/network/MainNet";
 import PrivateNet from "../src/network/PrivateNet";
-import { mintSender, privateKey, privNetContractAddress, mainNetAccount, privNetAccount } from "../src/constants/Web3Config";
-import { burnLogABI, hartABI, privHartABI } from "../src/constants/AbiFiles";
+import { watcherNetworkAccount, privateKey } from "../src/constants/Web3Config";
+import { burnLogABI, hartABI } from "../src/constants/AbiFiles";
 import {
   hartContractBinary,
-  privHartContractBinary
+  contractUnitTest
 } from "../src/constants/Binary";
 import BlockchainWatcher from "../src/model/BlockchainWatcher";
+import { privateToAddress, bufferToHex } from "ethereumjs-util";
 
 describe("manual minting", async function() {
   this.timeout(50000);
@@ -19,7 +20,7 @@ describe("manual minting", async function() {
   let mainAccount;
   let privAccount;
 
-  let mainNetContractAddress;
+  let watcherContractAddress;
   let privNetContractAddress;
 
   let singleLog;
@@ -37,9 +38,12 @@ describe("manual minting", async function() {
     privAccount = await privNet._getAccounts();
   });
 
-  it("check account", () => {
-    assert.strictEqual(mainAccount[0], mainNetAccount);
-    assert.strictEqual(privAccount[0], privNetAccount);
+  it("check account", async () => {
+    let watcherMintAddress = privateToAddress(await privateKey());
+    mintAccount = bufferToHex(watcherMintAddress);
+
+    assert.strictEqual(mainAccount[0], watcherNetworkAccount);
+    assert.strictEqual(privAccount[0], mintAccount);
   });
 
   it("deploy contract to Mainnet", async () => {
@@ -57,18 +61,19 @@ describe("manual minting", async function() {
         function(error, transactionHash) {}
       )
       .then(function(newContractInstance) {
-        mainNetContractAddress = newContractInstance.options.address;
+        watcherContractAddress = newContractInstance.options.address;
+        console.log("watcherContractAddress", watcherContractAddress);
       });
 
-    assert.strictEqual(typeof mainNetContractAddress, "string");
+    assert.strictEqual(typeof watcherContractAddress, "string");
   });
 
   it("deploy contract to PrivNet", async () => {
      //deploy hara token priv
-     var haratokenContract = await new privNet.web3.eth.Contract(privHartABI);
+     var haratokenContract = await new privNet.web3.eth.Contract(hartABI);
      await haratokenContract
        .deploy({
-         data: privHartContractBinary
+         data: contractUnitTest
        })
        .send(
          {
@@ -79,18 +84,19 @@ describe("manual minting", async function() {
        )
        .then(function(newContractInstance) {
          privNetContractAddress = newContractInstance.options.address;
+         console.log("privNetContractAddress", privNetContractAddress);
        });
  
      assert.strictEqual(typeof privNetContractAddress, "string");
   });
 
   it("test @_initHart and @_burn", async () => {
-    await mainNet.haraToken._initHart(hartABI, mainNetContractAddress);
+    await mainNet.haraToken._initHart(hartABI, watcherContractAddress);
     txLog = await mainNet.haraToken._burn(10, "", mainAccount[0]);
 
     assert.strictEqual(
       txLog.events.Burn.address,
-      mainNetContractAddress
+      watcherContractAddress
     );
 
     assert.strictEqual(txLog.events.Burn.event, "Burn");
@@ -98,24 +104,18 @@ describe("manual minting", async function() {
     assert.strictEqual(txLog.events.BurnLog.event, "BurnLog");
   });
 
-  it("test @_getMintAccount on PrivateNet", async () => {
-    mintAccount = privNet._getMintAccount();
-
-    assert.strictEqual(mintAccount, mintSender);
-  });
-
   it("prepare watch data and generate burnid", async () => {
     let startBlock = 0;
     let logs = await mainNet.haraToken._watch(
       startBlock,
-      mainNetContractAddress,
+      watcherContractAddress,
       [mainNet.haraToken._getTopicMain()],
       false
     );
 
     singleLog = logs[logs.length - 1];
 
-    decodedData = await privNet._decodeData(burnLogABI, singleLog.data, singleLog.topics);
+    decodedData = await mainNet._decodeData(burnLogABI, singleLog.data, singleLog.topics, watcherContractAddress);
 
     joinedBurnID = await new BlockchainWatcher()._getJoinedBurnID(decodedData.id, "1");
 
@@ -127,12 +127,13 @@ describe("manual minting", async function() {
   it("test @_mint", async () => {
     let nonce = await privNet._getNonce(mintAccount);
 
-    await privNet.haraToken._initHart(privHartABI, privNetContractAddress);
+    await privNet.haraToken._initHart(hartABI, privNetContractAddress);
+
     let mintStatus = await privNet.haraToken._mint(
       decodedData,
       mintAccount,
-      privateKey,
-      "1",
+      await privateKey(),
+      "4",
       nonce
     );
 

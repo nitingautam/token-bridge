@@ -1,8 +1,7 @@
 import MainNet from "./network/MainNet";
-import PrivateNet from "./network/PrivateNet";
 
-export const _MainWatcher = async (event, context, callback) => {
-  let result = await new MainNet()._mainWatcher(true)
+export const _BurnWatcher = async (event, context, callback) => {
+  let result = await new MainNet()._burnWatcher(true)
   
   callback(null, {
     statusCode: 200,
@@ -12,7 +11,6 @@ export const _MainWatcher = async (event, context, callback) => {
 
 export const _ManualMint = async (event, context, callback) => {
   let burnID = false;
-  let networkID = false;
 
   if(event.queryStringParameters && "burn_id" in event.queryStringParameters) {
     burnID = event.queryStringParameters.burn_id;
@@ -23,16 +21,7 @@ export const _ManualMint = async (event, context, callback) => {
     });
   }
 
-  if(event.queryStringParameters && "network_id" in event.queryStringParameters) {
-    networkID = event.queryStringParameters.network_id;
-  } else {
-    callback(null, {
-      statusCode: 401,
-      body: JSON.stringify({message: "you need network_id parameter"})
-    });
-  }
-
-  let result = await new MainNet()._manualMint(burnID, networkID);
+  let result = await new MainNet()._manualMint(burnID);
   
   callback(null, {
     statusCode: 200,
@@ -40,8 +29,8 @@ export const _ManualMint = async (event, context, callback) => {
   });
 }
 
-export const _PrivateWatcher = async (event, context, callback) => {
-  const result = await new PrivateNet()._privateWatcher();
+export const _MintWatcher = async (event, context, callback) => {
+  const result = await new MainNet()._mintWatcher();
 
   callback(null, {
     statusCode: 200,

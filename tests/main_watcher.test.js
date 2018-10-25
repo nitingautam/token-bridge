@@ -3,9 +3,10 @@ import assert from "assert";
 import BlockchainWatcherBlock from "../src/model/BlockchainWatcherBlock";
 import { hartABI, burnLogABI } from "../src/constants/AbiFiles";
 import { hartContractBinary } from "../src/constants/Binary";
-import { mainNetAccount, mintSender } from "../src/constants/Web3Config";
+import { watcherNetworkAccount, watcherNetworkID, privateKey } from "../src/constants/Web3Config";
 import PrivateNet from "../src/network/PrivateNet";
 import BlockchainWatcher from "../src/model/BlockchainWatcher";
+import { privateToAddress, bufferToHex } from "ethereumjs-util";
 
 describe("when mainwatcher got new data and dont have new data", async function() {
   this.timeout(1000000);
@@ -13,7 +14,7 @@ describe("when mainwatcher got new data and dont have new data", async function(
   let privNet;
   let mainAccount;
 
-  let mainNetContractAddress;
+  let watcherContractAddress;
 
   let mintAccount;
 
@@ -34,7 +35,7 @@ describe("when mainwatcher got new data and dont have new data", async function(
   });
 
   it("check account", () => {
-    assert.strictEqual(mainAccount[0], mainNetAccount);
+    assert.strictEqual(mainAccount[0], watcherNetworkAccount);
   });
 
   it("deploy contract to Mainnet", async () => {
@@ -52,25 +53,28 @@ describe("when mainwatcher got new data and dont have new data", async function(
         function(error, transactionHash) {}
       )
       .then(function(newContractInstance) {
-        mainNetContractAddress = newContractInstance.options.address;
+        watcherContractAddress = newContractInstance.options.address;
       });
 
-    assert.strictEqual(typeof mainNetContractAddress, "string");
+    assert.strictEqual(typeof watcherContractAddress, "string");
   });
 
   it("test @_getMintAccount", async () => {
     mintAccount = await privNet._getMintAccount();
 
-    assert.strictEqual(mintAccount, mintSender);
+    let watcherMintAddress = privateToAddress(await privateKey());
+    let _mintAccount = bufferToHex(watcherMintAddress);
+
+    assert.strictEqual(mintAccount, _mintAccount);
   });
 
   it("test @_initHart and @_burn", async () => {
-    await mainNet.haraToken._initHart(hartABI, mainNetContractAddress);
+    await mainNet.haraToken._initHart(hartABI, watcherContractAddress);
     txLog = await mainNet.haraToken._burn(10, "", mainAccount[0]);
 
     assert.strictEqual(
       txLog.events.Burn.address,
-      mainNetContractAddress
+      watcherContractAddress
     );
 
     assert.strictEqual(txLog.events.Burn.event, "Burn");
@@ -82,7 +86,7 @@ describe("when mainwatcher got new data and dont have new data", async function(
     let startBlock = 0;
     let logs = await mainNet.haraToken._watch(
       startBlock,
-      mainNetContractAddress,
+      watcherContractAddress,
       [mainNet.haraToken._getTopicMain()],
       false
     );
@@ -94,18 +98,19 @@ describe("when mainwatcher got new data and dont have new data", async function(
   });
 
   it("test @_decodeData", async () => {
-    decodedData = await privNet._decodeData(burnLogABI, singleLog.data, singleLog.topics);
+    decodedData = await mainNet._decodeData(burnLogABI, singleLog.data, singleLog.topics, watcherContractAddress);
 
     assert.strictEqual(mainAccount[0], decodedData.burner);
   });
 
   it("test @_generateBurnItem to save into dynamodb", async () => {
-    genBurnItem = await new BlockchainWatcher()._generateBurnItem(singleLog, decodedData, 0, "1");
+    genBurnItem = await new BlockchainWatcher()._generateBurnItem(singleLog, decodedData, 0, watcherNetworkID);
 
-    assert.strictEqual(genBurnItem.from, "0001");
-    assert.strictEqual(genBurnItem.to, "0002");
+    assert.strictEqual(genBurnItem.from, "0004");
+    assert.strictEqual(genBurnItem.to, "0005");
     assert.strictEqual(genBurnItem.mint_status, "false");
     assert.strictEqual(genBurnItem.burn_status, "true");
+    assert.strictEqual(genBurnItem.hart_value, 10);
   });
 
   it("test @_getNonce on PrivateNet", async () => {

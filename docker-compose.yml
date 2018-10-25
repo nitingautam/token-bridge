@@ -1,17 +1,32 @@
-version: '3'
+version: "3"
+volumes:
+  node_modules:
 services:
-  ganache_main:
-    image: trufflesuite/ganache-cli:v6.1.6
-    command: ganache-cli --db /var/task/ganache_main -h 0.0.0.0 --p 8545 --account='0x808f2d3173474c6d28381582b1316474d35a7404b25842c3f79985b594370cc1,500000000000000000000'
+  token_bridge_4:
+    image: hara:token-bridge
+    environment:
+      - WATCHER_NETWORK_URL=http://192.168.99.100:8545
+      - WATCHER_NETWORK_ID=4
+      - WATCHER_NETWORK_ACCOUNT=0x2A4FEB48B3bC241C4bD3b7A9B420683deB572A58
+      - WATCHER_CONTRACT_ADDRESS=0x51ada1a1b023f356396858ed834ace9cb891a980
+      - WATCHER_MINT_PK=0x808f2d3173474c6d28381582b1316474d35a7404b25842c3f79985b594370cc1
+      - WATCHER_MINT_PK_PATH=/blockchain/token-bridge/mint_pk_path
+      - DEFAULT_MINT_NETWORK_URL=http://192.168.99.100:8546
+      - DEFAULT_MINT_NETWORK_ID=5
+      - DEFAULT_MINT_CONTRACT_ADDRESS=0xc40c645560efc82aa5820cd28c4867d888ba9e3f
+      - MULTIPLE_MINT_NETWORK_ID=[1, 2, 3, 4]
+      - MULTIPLE_MINT_NETWORK_URL=["http://192.168.99.100:8547", "http://192.168.99.100:8548", "http://192.168.99.100:8549", "http://192.168.99.100:8545"]
+      - MULTIPLE_MINT_CONTRACT_ADDRESS=["0xf6a21e16167570c7b5cd3c1b06c6cc5849835b2d", "0xa909bfe79b244f91ce4024cf6f778e2b7c2810e4", "0xf3b53fe64d4e57485f0274ec93e3d32eb6921d2f", "0x51ada1a1b023f356396858ed834ace9cb891a980"]
+      - REGION=local
+      - ROLE=""
+      - IS_DEV=true
+      - SHARD_LIMIT=1000000
+      - TB_WATCHER=blockchain_watcher
+      - TB_WATCHER_BLOCKS=blockchain_watcher_blocks
+    command: bash -c "npm run dev"
     ports:
-      - "8545:8545"
+      - "3000:3000"
     volumes:
-      - ./ganache_main:/var/task/ganache_main
-  ganache_priv:
-    image: trufflesuite/ganache-cli:v6.1.6
-    command: ganache-cli --db /var/task/ganache_priv -h 0.0.0.0 --p 8546 --account='0x808f2d3173474c6d28381582b1316474d35a7404b25842c3f79985b594370cc1,500000000000000000000'
-    ports:
-      - "8546:8546"
-    volumes:
-      - ./ganache_priv:/var/task/ganache_priv
+      - .:/app
+      - node_modules:/app/node_modules
   

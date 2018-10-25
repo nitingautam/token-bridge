@@ -1,22 +1,10 @@
-nvm use v8.10.0
-# npm install
-npm link nyc
-npm link mocha
+# bin bash
 
-mkdir dynamodb_data
-eval "$(docker-machine env default)"
-docker-machine start default
-# docker build -t watcher:dev .
-docker-compose --file docker_compose_test.yml up -d
-# sls dynamodb install
-sls dynamodb start -p 8000 --migrate true --dbPath=$(pwd)/dynamodb_data
-sls offline --host 0.0.0.0 start -r ap-southeast-1 --noTimeout --location .webpack/service
+# start docker machine first
+docker-machine start
 
-# run this inside watcher:dev 
-# serverless offline --skipCacheInvalidation --host 0.0.0.0 start -r ap-southeast-1 --noTimeout
+# build docker image with tag hara:dynamodb_local will be used on docker-compose
+docker build -t hara:token-bridge .
 
-# run inside docker
-# nodemon --legacy-watch --exec "nyc mocha --compilers js:babel-register tests/mint.test.js"
-
-# run outside docker
-# nodemon --watch --exec "nyc mocha --compilers js:babel-register tests/mint.test.js"
+# now run local env 
+docker-compose up
