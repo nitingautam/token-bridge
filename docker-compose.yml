@@ -1,17 +1,34 @@
 version: '3'
+volumes:
+  node_modules:
 services:
-  ganache_main:
-    image: trufflesuite/ganache-cli:v6.1.6
-    command: ganache-cli --db /var/task/ganache_main -h 0.0.0.0 --p 8545 --account='0x808f2d3173474c6d28381582b1316474d35a7404b25842c3f79985b594370cc1,500000000000000000000'
+  data_storage:
+    image: data:storage
+    environment:
+      - DB_ENDPOINT=http://192.168.99.100:8000
+      - IS_DEV=true
+      - TB_UPLOAD=upload
+      - PG_USER=postgres
+      - PG_HOST=localhost
+      - PG_DATABASE=haraapidev
+      - PG_PASSWORD=swordfish
+      - PG_PORT=5432
+      - BUCKET_AWS_ACCESS_KEY_ID=not-important
+      - BUCKET_AWS_SECRET_ACCESS_KEY=not-important
+      - BUCKET_NAME=hara-temp
+      - AWS_ACCESS_KEY_ID=not-important
+      - AWS_SECRET_ACCESS_KEY=not-important
+      - REGION=local
+      - AWS_ENDPOINT=http://localhost:8000
+      - MAIN_NETWORK=http://localhost:8545
+      - PRIV_NETWORK=http://localhost:8546
+      - DATA_FACTORY_ACCOUNT=0x2a4feb48b3bc241c4bd3b7a9b420683deb572a58
+      - DATA_FACTORY_ADDRESS=0xf6a21e16167570c7b5cd3c1b06c6cc5849835b2d
+      - DATA_PROVIDER_ADDRESS=0x4248fbfba8ee6ad3b9150fcd578174608ee665d6
+      
+    command: bash -c "npm run dev"
     ports:
-      - "8545:8545"
+      - "3000:3000"
     volumes:
-      - ./ganache_main:/var/task/ganache_main
-  ganache_priv:
-    image: trufflesuite/ganache-cli:v6.1.6
-    command: ganache-cli --db /var/task/ganache_priv -h 0.0.0.0 --p 8546 --account='0x808f2d3173474c6d28381582b1316474d35a7404b25842c3f79985b594370cc1,500000000000000000000'
-    ports:
-      - "8546:8546"
-    volumes:
-      - ./ganache_priv:/var/task/ganache_priv
-  
+      - .:/app
+      # - node_modules:/app/node_modules
