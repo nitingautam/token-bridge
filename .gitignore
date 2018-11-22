@@ -25,4 +25,12 @@ package-lock.json
 dynamodb_data
 ganache_main
 ganache_priv
-*.DS_Store
+serverless.yml
+
+.dynamodb
+
+# jsdoc
+out
+dist
+
+xunit.xml

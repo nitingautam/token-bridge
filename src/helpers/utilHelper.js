@@ -11,12 +11,15 @@ module.exports = {
       console.log(msg);
     }
   },
+
   isString(val) {
     return typeof val == "string";
   },
+
   isNumber(val) {
     return typeof val == "number";
   },
+
   sanitize(val) {
     let type = typeof val;
     if (type == "number") {
@@ -28,10 +31,13 @@ module.exports = {
     }
     return "";
   },
+
+
   padNumber(num, padlen) {
     let pad = new Array(1 + padlen).join(0);
     return (pad + num).slice(-pad.length);
   },
+
   clamp(val, minVal, maxVal) {
     if (!isNaN(val)) {
       let value = parseInt(val);
@@ -43,6 +49,7 @@ module.exports = {
     } //if is number
     return val;
   },
+
   replaceCharAt(str, index, replacement) {
     return (
       str.substr(0, index) +
@@ -50,6 +57,8 @@ module.exports = {
       str.substr(index + replacement.length)
     );
   },
+
+
   removePad(str, padChar, direction = this.DIRECTION_LEFT) {
     if (!this.isString()) {
       str += "";
@@ -80,6 +89,7 @@ module.exports = {
     }
     return str.trim();
   },
+
   getJsonContent(jsonBody, param) {
     let value = "";
     try {
@@ -94,12 +104,11 @@ module.exports = {
     }
     return result;
   },
+
   getRequestBody(param, body, contentType) {
     let contentTypeU = this.sanitize(contentType).toUpperCase();
     let split = contentTypeU.split("; ");
-    if (contentTypeU == "APPLICATION/JSON") {
-      return this.getJsonContent(body, param);
-    } else if (split.length > 1 && split[0] == "MULTIPART/FORM-DATA") {
+    if (split.length > 1 && split[0] == "MULTIPART/FORM-DATA") {
       let boundary = multipart.getBoundary(contentType);
       let boundaryInner = boundary.replace(/-/g, "");
       let parts = this.sanitize(
@@ -118,7 +127,58 @@ module.exports = {
           return parts[i].substr(second, parts[i].length);
         }
       }
+    }else{
+      return this.getJsonContent(body, param);
     }
     return "";
+  },
+
+  createRandomString(length) {
+    var str = "";
+    for (
+      ;
+      str.length < length;
+      str += Math.random()
+        .toString(36)
+        .substr(2)
+    );
+    return str.substr(0, length);
+  },
+
+  yyyymmdd() {
+    var x = new Date();
+    var y = x.getFullYear().toString();
+    var m = (x.getMonth() + 1).toString();
+    var d = x.getDate().toString();
+    (d.length == 1) && (d = '0' + d);
+    (m.length == 1) && (m = '0' + m);
+    var yyyymmdd = y + m + d;
+    return yyyymmdd;
+  },
+
+  getIsoDate(){
+    return new Date().toISOString();
+  },
+
+  validateHeader(message, signature, address){
+    const Web3 = require('web3');
+    const utils = require('ethereumjs-util');
+    const web3 = new Web3();
+    let msg = web3.utils.keccak256(message);
+    msg = new Buffer(msg.split('x')[1], 'hex');
+    const sgn = utils.fromRpcSig(signature);
+
+    const pub = utils.ecrecover(msg, sgn.v, sgn.r, sgn.s);
+    
+    const recoveredAddress = '0x' + utils.pubToAddress(pub).toString('hex')
+    if(address.toLowerCase() == recoveredAddress){
+      return true;
+    }
+    else{
+      console.log('expected address: '+address+", but got "+recoveredAddress);
+      return false;
+    }
+        
   }
+  
 };
